@@ -1,0 +1,54 @@
+from flask import (
+    Blueprint, render_template, request, redirect, url_for, current_app
+)
+import sendgrid
+from sendgrid.helpers.mail import *
+
+bp = Blueprint('portfolio',__name__,url_prefix='/')
+
+@bp.route('/', methods=['GET'])
+def index():
+    return render_template('portfolio/index.html')
+
+@bp.route('/mail', methods=['GET', 'POST'])
+def mail():
+    name = request.form.get('name')
+    email = request.form.get('email')
+    message = request.form.get('message')
+
+    if request.method == 'POST':
+        send_email(name, email, message)
+        return render_template('portfolio/sent_mail.html')
+
+    return redirect(url_for('porfolio.index'))
+
+
+def send_email(name, email, message):
+    mi_email = current_app.config['FROM']
+    
+    to_email = To(mi_email, substitutions={
+        "-name-":name,
+        "-email-":email,
+        "-message-":message
+    })
+    message = Mail(
+        from_email=str(mi_email),
+        to_emails=str(mi_email),
+        subject='Nuevo contacto desde la web',
+        html_content = """
+            <p>Hola Daniel, tienes un nuevo contacto desde la web:</p>
+            <p>Nombre: -name-</p>
+            <p>Email: -email-</p>
+            <p>Mensaje: -message-</p>
+        """
+    )
+    try:
+        sg = sendgrid.SendGridAPIClient(api_key=current_app.config['SENDGRID_KEY'])
+        response = sg.send(message)
+        print('........ Mensaje enviado correctamente ........')
+        print(response.status_code)
+        print(response.body)
+        print(response.headers)
+    except Exception as e:
+        print('........ Falló el envío ........')
+        print(e.message)
